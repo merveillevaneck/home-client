@@ -83,7 +83,6 @@ fn main() {
         Payload::Binary(bin_data) => println!("{:?}", bin_data),
     };
 
-    //todo replace this with an env config
     let has_host = env_variables.contains_key("HOST_URL");
 
     if !has_host { 
