@@ -63,6 +63,7 @@ fn main() {
         Payload::Binary(bin_data) => println!("{:?}", bin_data),
     };
 
+    //todo replace this with an env config
     let host = "https://pop-os.tail4f070.ts.net";
 
     let mut socket = SocketBuilder::new(host)
