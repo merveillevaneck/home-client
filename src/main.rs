@@ -1,9 +1,23 @@
 use rodio::source::{SineWave, Source};
 use rodio::{OutputStream, Sink};
-use rust_socketio::{Payload, SocketBuilder};
+use rust_socketio::{Payload, SocketBuilder, Socket};
 use serde_json::json;
+use std::os::unix::process;
+use std::process::exit;
+use std::ptr::null;
 use std::time::Duration;
-use std::{io::*, os::unix::process};
+use std::collections::hash_map::HashMap;
+use env_file_reader::read_file;
+use std::io::Error;
+use std::io::stdin;
+
+
+fn read_env() -> Result<HashMap<String, String>, Error> {
+    let env_variables = read_file("./.env");
+    return env_variables;
+}
+
+
 
 enum Instruction {
     Alert,
@@ -48,25 +62,37 @@ fn alert() {
     sink.sleep_until_end();
 }
 
-fn process_instruction(instruction: &str) {
+fn process_instruction(instruction: &str, socket: Socket) {
     let decoded = Instruction::decode(instruction);
     Instruction::process(decoded, None);
 }
 
 fn main() {
-    let callback = |payload: Payload, _| match payload {
+    let env = read_env();
+    if env.is_err() {exit(1)}
+
+    let env_variables = env.unwrap();
+
+    println!("String::{:?}", env_variables["HOST_URL"]);
+    let callback = |payload: Payload, socket: Socket| match payload {
         Payload::String(str) => {
-            // let message = str[1..str.len() - 1].to_string();
-            // process_instruction(&message);
-            alert();
+            let message = str[1..str.len() - 1].to_string();
+            process_instruction(&message, socket);
+            // alert();
         }
         Payload::Binary(bin_data) => println!("{:?}", bin_data),
     };
 
     //todo replace this with an env config
-    let host = "https://pop-os.tail4f070.ts.net";
+    let has_host = env_variables.contains_key("HOST_URL");
 
-    let mut socket = SocketBuilder::new(host)
+    if !has_host { 
+        println!("HOST_URL is None");
+        exit(1)
+    }
+
+    let host = env_variables.get("HOST_URL");
+    let mut socket = SocketBuilder::new(host.unwrap())
         .on("message", callback)
         .on("error", |err, _| eprintln!("Error: {:#?}", err))
         .connect()
@@ -85,4 +111,5 @@ fn main() {
             .emit("message", json!(input))
             .expect("Server unreachable");
     }
+
 }
